@@ -96,6 +96,7 @@ def describe_tags(tags: dict):
         "01": "Point of Initiation Method",
         "26": "Merchant Account Information",
         "52": "Merchant Category Code",
+        "51": "Merchant Account Information Domesti Central Repository",
         "53": "Transaction Currency",
         "54": "Transaction Amount",
         "58": "Country Code",
@@ -110,9 +111,11 @@ def describe_tags(tags: dict):
         "01": "Merchant PAN",
         "02": "Merchant ID",
         "03": "Merchant Criteria",
-        "05": "Customer Label",
+        "05": "Reference Label",
+        "06": "Customer Label",
         "07": "Terminal Label",
         "08": "Purpose of Transaction",
+        "60": "Payment Label",
     }
     for tag, value in tags.items():
         desc = descriptions.get(tag, "Unknown Tag")
