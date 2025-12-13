@@ -3,51 +3,49 @@ from colorama import Fore, Style, init
 
 init(autoreset=True)
 
-# --- REFERENSI SPESIFIKASI (Sama seperti sebelumnya) ---
-# [cite: 282, 380, 294, 285]
+# ==========================================
+# 1. REFERENSI SPESIFIKASI (ASPI V1.0)
+# ==========================================
 
-ROOT_TAGS = {
-    "00": "Payload Format Indicator", "01": "Point of Initiation Method", 
-    "52": "Merchant Category Code", "53": "Transaction Currency", 
-    "54": "Transaction Amount", "58": "Country Code", 
-    "59": "Merchant Name", "60": "Merchant City", 
-    "61": "Postal Code", "63": "CRC",
-    "51": "Domestic Central Repository"
+# Format: ID: {Deskripsi, Status_Default (M/O/C), Format (N/ans/S)}
+# [cite_start]Ref: Tabel 3.6 [cite: 1034-1040]
+ROOT_SPEC = {
+    "00": {"desc": "Payload Format Indicator", "status": "M", "val": "01"},
+    "01": {"desc": "Point of Initiation Method", "status": "M"}, # 11=Static, 12=Dynamic
+    "02": {"desc": "Merchant Account Info (VISA)", "status": "O"},
+    "26": {"desc": "Merchant Account Info (DOMESTIC)", "status": "C"}, # Minimal 1 MAI wajib
+    "51": {"desc": "Domestic Central Repository (NMID)", "status": "C"}, # Wajib jika Static
+    "52": {"desc": "Merchant Category Code (MCC)", "status": "M", "len": 4},
+    "53": {"desc": "Transaction Currency", "status": "M", "val": "360"}, # 360 = IDR
+    "54": {"desc": "Transaction Amount", "status": "C"},
+    "55": {"desc": "Tip Indicator", "status": "O"},
+    "56": {"desc": "Tip Value Fixed", "status": "C"},
+    "57": {"desc": "Tip Value Percentage", "status": "C"},
+    "58": {"desc": "Country Code", "status": "M", "val": "ID"},
+    "59": {"desc": "Merchant Name", "status": "M"},
+    "60": {"desc": "Merchant City", "status": "M"},
+    "61": {"desc": "Postal Code", "status": "O"}, # Jadi M jika Country=ID
+    "62": {"desc": "Additional Data Field", "status": "O"},
+    "63": {"desc": "CRC", "status": "M", "len": 4}
 }
 
-# --- DEBUGGING UTILITIES ---
+# Ref: Tabel 4.3
+MAI_SPEC = {
+    "00": {"desc": "Global Unique Identifier", "status": "M"},
+    "01": {"desc": "Merchant PAN", "status": "M"},
+    "02": {"desc": "Merchant ID", "status": "M"},
+    "03": {"desc": "Merchant Criteria", "status": "M"}
+}
 
-def log_debug(message, level="INFO"):
-    if level == "INFO":
-        print(f"{Fore.BLUE}[INFO]{Style.RESET_ALL} {message}")
-    elif level == "SUCCESS":
-        print(f"{Fore.GREEN}[OK]{Style.RESET_ALL} {message}")
-    elif level == "ERROR":
-        print(f"{Fore.RED}[FAIL]{Style.RESET_ALL} {message}")
-    elif level == "WARN":
-        print(f"{Fore.YELLOW}[WARN]{Style.RESET_ALL} {message}")
+# ==========================================
+# 2. CORE PARSER & CRC
+# ==========================================
 
-def visualize_error(qr_string, index, error_msg):
-    print(f"\n{Fore.RED}=== PARSING STOPPED AT INDEX {index} ==={Style.RESET_ALL}")
-    
-    # Tampilkan konteks sekitar error (10 char sebelum dan sesudah)
-    start = max(0, index - 15)
-    end = min(len(qr_string), index + 15)
-    
-    snippet = qr_string[start:end]
-    pointer = " " * (index - start) + "^ ERROR HERE"
-    
-    print(f"String Context:  ...{snippet}...")
-    print(f"Visual Pointer:     {Fore.RED}{pointer}{Style.RESET_ALL}")
-    print(f"Reason: {error_msg}\n")
-
-# --- CORE LOGIC ---
-
-def calculate_crc_debug(data: str) -> str:
-    # CRC Calculation mengacu pada ISO/IEC 13239 [cite: 476]
-    # Polynomial '1021' (hex) dan initial value 'FFFF' (hex) [cite: 476]
+def calculate_crc(data: str) -> str:
+    """ISO/IEC 13239 CRC Calculation"""
     crc = 0xFFFF
     polynomial = 0x1021
+    # Encode latin-1 untuk memastikan byte processing benar
     for byte in data.encode('latin-1'):
         crc ^= byte << 8
         for _ in range(8):
@@ -58,178 +56,214 @@ def calculate_crc_debug(data: str) -> str:
             crc &= 0xFFFF
     return f"{crc:04X}"
 
-def parse_tlv_debug(value, indent_level=0):
+def parse_tlv(value: str):
     tags = {}
     index = 0
-    indent = "  " * indent_level
-    
-    log_debug(f"{indent}Start parsing Sub-Tags (Length: {len(value)})")
-    
     while index < len(value):
-        # 1. Cek sisa panjang string untuk ID
-        if index + 2 > len(value):
-            log_debug(f"{indent}Sisa string tidak cukup untuk mengambil ID Tag.", "WARN")
-            break
+        try:
+            # Safety check parsing
+            if index + 4 > len(value): break
             
-        tag = value[index : index + 2]
-        
-        # 2. Cek sisa panjang string untuk Length
-        if index + 4 > len(value):
-            log_debug(f"{indent}Tag {tag} ditemukan, tapi string habis sebelum Length header.", "WARN")
-            break
+            tag = value[index : index + 2]
+            len_str = value[index + 2 : index + 4]
             
-        length_str = value[index + 2 : index + 4]
-        
-        if not length_str.isdigit():
-            log_debug(f"{indent}Tag {tag}: Format Length '{length_str}' bukan angka.", "ERROR")
-            break
+            if not len_str.isdigit(): break
+            length = int(len_str)
             
-        length = int(length_str)
-        
-        # 3. Cek sisa panjang string untuk Value
-        if index + 4 + length > len(value):
-            actual_len = len(value) - (index + 4)
-            log_debug(f"{indent}Tag {tag}: Length header {length}, tapi sisa data cuma {actual_len}.", "ERROR")
-            break
+            if index + 4 + length > len(value): break
             
-        sub_value = value[index + 4 : index + 4 + length]
-        tags[tag] = sub_value
-        log_debug(f"{indent}├─ SubTag [{tag}] Len:{length} Val:{sub_value}", "SUCCESS")
-        
-        index += 4 + length
-        
+            sub_val = value[index + 4 : index + 4 + length]
+            tags[tag] = sub_val
+            index += 4 + length
+        except: break
     return tags
 
-def parse_qris_deep_debug(qr_string):
+def parse_root(qr_string: str):
     tags = {}
     index = 0
     
-    print(f"\n{Style.BRIGHT}--- STEP 1: PARSING STRUCTURE ---{Style.RESET_ALL}")
+    # Validasi Dasar
+    if len(qr_string) < 4: return False, "String terlalu pendek"
     
-    if len(qr_string) < 4:
-        visualize_error(qr_string, 0, "String terlalu pendek (< 4 chars).")
-        return tags
-
-    while index < len(qr_string):
-        # --- HEADER ANALYSIS ---
-        # Format: ID (2 digit) + Length (2 digit) + Value (Var)
-        # Ref: [cite: 254, 342]
-        
-        # 1. Ambil ID
-        if index + 2 > len(qr_string):
-            visualize_error(qr_string, index, "End of string reached while expecting Tag ID.")
-            break
-        tag = qr_string[index : index + 2]
-        
-        # 2. Ambil Length Header
-        if index + 4 > len(qr_string):
-            visualize_error(qr_string, index, f"Tag {tag} found, but missing Length Header.")
-            break
-        length_str = qr_string[index + 2 : index + 4]
-        
-        # Validasi Format Length
-        if not length_str.isdigit():
-            visualize_error(qr_string, index+2, f"Length Header '{length_str}' is not numeric.")
-            break
-        length = int(length_str)
-        
-        # 3. Ambil Value
-        value_start_index = index + 4
-        value_end_index = value_start_index + length
-        
-        if value_end_index > len(qr_string):
-            visualize_error(qr_string, value_start_index, 
-                            f"Tag {tag} expects {length} chars, but only {len(qr_string) - value_start_index} remain.")
-            break
+    try:
+        while index < len(qr_string):
+            # Cek sisa string cukup untuk header (4 char)
+            if index + 4 > len(qr_string): break
             
-        value = qr_string[value_start_index : value_end_index]
-        
-        # LOGGING
-        tag_name = ROOT_TAGS.get(tag, "Unknown/Proprietary")
-        log_debug(f"Index {index}: Found Tag [{tag}] ({tag_name}) -> Length: {length}")
-        
-        # RECURSIVE PARSING (TEMPLATE)
-        # Ref: Tag 26-45 (Merchant Info), 51 (Domestic), 62 (Additional Data) [cite: 388, 290]
-        parsed_value = value
-        if (tag.isdigit() and 26 <= int(tag) <= 45) or tag in ["51", "62", "64"]:
-            log_debug(f"  -> Detected Template Tag [{tag}], attempting deep parse...")
-            parsed_value = parse_tlv_debug(value, indent_level=1)
-        
-        tags[tag] = parsed_value
-        
-        # Move Index
-        index = value_end_index
-
-    return tags
-
-def validate_crc_deep(qr_string, tags):
-    print(f"\n{Style.BRIGHT}--- STEP 2: CRC INTEGRITY CHECK ---{Style.RESET_ALL}")
+            tag = qr_string[index : index + 2]
+            len_str = qr_string[index + 2 : index + 4]
+            
+            if not len_str.isdigit(): return False, f"Length Header Invalid di index {index+2}"
+            length = int(len_str)
+            
+            val_start = index + 4
+            val_end = val_start + length
+            
+            if val_end > len(qr_string):
+                return False, f"Tag {tag} declare length {length} tapi sisa string kurang"
+                
+            value = qr_string[val_start : val_end]
+            
+            # Recursive Parse untuk Template (MAI 26-45, 51, 62)
+            is_template = False
+            if tag.isdigit():
+                itag = int(tag)
+                if (26 <= itag <= 45) or itag == 51 or itag == 62 or itag == 64:
+                    is_template = True
+            
+            if is_template:
+                tags[tag] = parse_tlv(value)
+            else:
+                tags[tag] = value
+                
+            index = val_end
+            
+    except Exception as e: return False, str(e)
     
-    # CRC harus berada di Tag 63 dan merupakan objek terakhir [cite: 272, 475]
-    if "63" not in tags:
-        log_debug("Tag 63 (CRC) tidak ditemukan dalam hasil parsing.", "ERROR")
-        return
-
-    # Check posisi Tag 63 di raw string
-    # Kita cari '6304' terakhir di string
-    crc_marker = "6304"
-    last_occurrence = qr_string.rfind(crc_marker)
-    
-    if last_occurrence == -1:
-         log_debug("Header Tag CRC '6304' tidak ditemukan di raw string.", "ERROR")
-         return
-         
-    # Pastikan itu benar-benar di akhir string (allow whitespace trim issue)
-    if last_occurrence + 8 != len(qr_string):
-        log_debug(f"Posisi Tag 63 aneh. Ditemukan di index {last_occurrence}, tapi panjang string {len(qr_string)}.", "WARN")
-        log_debug("Standar mengharuskan CRC menjadi urutan terakhir data object[cite: 360].", "WARN")
-
-    # Ambil data input untuk kalkulasi (Semua string KECUALI Value dari CRC)
-    # Ref: "Data yang dihitung adalah seluruh data object termasuk ID, panjang karakter, Value, serta ID dan Panjang karakter dari CRC sendiri" 
-    data_to_calculate = qr_string[:last_occurrence + 4] 
-    provided_crc = qr_string[last_occurrence + 4:]
-    
-    calculated_crc = calculate_crc_debug(data_to_calculate)
-    
-    print(f"Data Input CRC : {data_to_calculate[:20]}...{data_to_calculate[-10:]} (Total {len(data_to_calculate)} chars)")
-    print(f"Provided CRC   : {Fore.YELLOW}{provided_crc}{Style.RESET_ALL}")
-    print(f"Calculated CRC : {Fore.CYAN}{calculated_crc}{Style.RESET_ALL}")
-    
-    if provided_crc.upper() == calculated_crc.upper():
-        log_debug("CRC MATCH! Data Integrity Verified.", "SUCCESS")
+    # Validasi CRC Checksum
+    # Ref: CRC dihitung dari semua data KECUALI value CRC itu sendiri
+    if not qr_string.endswith("6304" + qr_string[-4:].upper()):
+        # Coba cari CRC manual jika ada sampah whitespace
+        last_63 = qr_string.rfind("6304")
+        if last_63 == -1: return False, "CRC Tag (63) Missing/Invalid"
+        data_calc = qr_string[:last_63+4]
+        crc_provided = qr_string[last_63+4:]
     else:
-        log_debug("CRC MISMATCH! Data mungkin korup atau terpotong.", "ERROR")
+        data_calc = qr_string[:-4]
+        crc_provided = qr_string[-4:]
+        
+    crc_calc = calculate_crc(data_calc)
+    if crc_provided.upper() != crc_calc.upper():
+        return False, f"CRC Mismatch! Input: {crc_provided}, Calc: {crc_calc}"
+        
+    return True, tags
 
-def show_results(tags):
-    print(f"\n{Style.BRIGHT}--- STEP 3: PARSED DATA DUMP ---{Style.RESET_ALL}")
-    if not tags:
-        print("No tags were successfully parsed.")
-        return
+# ==========================================
+# 3. VALIDASI ATURAN INDONESIA (ASPI)
+# ==========================================
 
-    for k, v in tags.items():
-        desc = ROOT_TAGS.get(k, "Unknown")
+def check_compliance(tags):
+    errors = []
+    warnings = []
+
+    # 1. Cek Mandatory Tags Dasar (Missing Check)
+    for tag_id, spec in ROOT_SPEC.items():
+        if spec['status'] == 'M' and tag_id not in tags:
+            # Kecuali Tag 61 & 51 yg kondisional, nanti dicek terpisah
+            if tag_id not in ['61', '51']: 
+                errors.append(f"MISSING MANDATORY TAG: [{tag_id}] {spec['desc']}")
+
+    # 2. Validasi Khusus Tag 58 (Country) & 61 (Postal)
+    # [cite_start]Ref: Tabel 3.6 Note [cite: 1040]
+    country = tags.get('58', '')
+    if country == 'ID':
+        if '61' not in tags:
+            errors.append(f"MISSING MANDATORY TAG: [61] Postal Code (Wajib karena Country=ID)")
+        elif not tags['61']: # Ada tapi kosong
+            errors.append(f"INVALID VALUE: [61] Postal Code tidak boleh kosong")
+
+    # 3. Validasi Tag 60 (City) - Tidak Boleh Kosong
+    if '60' in tags:
+        if len(tags['60']) == 0:
+            errors.append(f"INVALID VALUE: [60] Merchant City length 0 (Wajib diisi)")
+    
+    # 4. Validasi Tag 51 (NMID) vs Tag 01 (Static/Dynamic)
+    # [cite_start]Ref: 4.7.7 [cite: 407-408]
+    poi = tags.get('01', '')
+    if poi == '11': # Static
+        if '51' not in tags:
+            errors.append(f"MISSING MANDATORY TAG: [51] Domestic Repo/NMID (Wajib untuk QR Static)")
+    
+    # 5. Validasi Minimal 1 Merchant Account (26-45)
+    # Ref: Tabel 3.6
+    has_mai = any(k for k in tags if k.isdigit() and 26 <= int(k) <= 45)
+    if not has_mai and '51' not in tags:
+        errors.append("MISSING MAI: Minimal harus ada satu Merchant Account Info (Tag 26-45 atau 51)")
+
+    # 6. Validasi Currency IDR
+    if '53' in tags and tags['53'] != '360':
+        warnings.append(f"WARNING CURRENCY: Tag 53 bernilai {tags['53']}, standar IDR adalah 360")
+
+    return errors, warnings
+
+# ==========================================
+# 4. TAMPILAN VISUAL
+# ==========================================
+
+def print_tree(tags, level=0):
+    indent = "   " * level
+    for k in sorted(tags.keys()):
+        v = tags[k]
+        
+        # Determine Desc
+        desc = "Unknown"
+        if level == 0: 
+            desc = ROOT_SPEC.get(k, {}).get('desc', 'Proprietary')
+            if k.isdigit() and 26 <= int(k) <= 45: desc = "Merchant Account Info"
+        elif level == 1:
+            desc = MAI_SPEC.get(k, {}).get('desc', 'Sub Data')
+            
+        # Coloring
+        key_color = Fore.CYAN if level == 0 else Fore.YELLOW
+        
         if isinstance(v, dict):
-            print(f"[{k}] {desc}:")
-            for sk, sv in v.items():
-                print(f"    └─ [{sk}] : {sv}")
+            print(f"{indent}{key_color}[{k}]{Style.RESET_ALL} {desc}:")
+            print_tree(v, level + 1)
         else:
-            print(f"[{k}] {desc} : {v}")
+            # Cek Empty Value Error visual
+            val_display = v
+            if v == "": 
+                val_display = f"{Fore.RED}<EMPTY STRING>{Style.RESET_ALL}"
+            print(f"{indent}{key_color}[{k}]{Style.RESET_ALL} {desc}: {val_display}")
+
+# ==========================================
+# 5. MAIN EXECUTION (INTERACTIVE)
+# ==========================================
 
 if __name__ == "__main__":
-    print(f"{Style.BRIGHT}{Fore.CYAN}=== QRIS DEEP DEBUGGER TOOL ==={Style.RESET_ALL}")
-    print("Paste string QRIS anda (bahkan yang invalid/terpotong):")
+    print(f"{Style.BRIGHT}=== QRIS VALIDATOR (ASPI SPEC V1.0) ==={Style.RESET_ALL}")
     
+    raw_input = ""
+
+    # Cek apakah user memberikan argumen saat menjalankan script
     if len(sys.argv) > 1:
-        raw_qris = sys.argv[1]
+        raw_input = sys.argv[1]
     else:
-        raw_qris = input("> ").strip()
+        # JIKA TIDAK ADA ARGUMEN, MINTA INPUT DARI USER DI TERMINAL
+        print(f"\n{Fore.YELLOW}Silakan paste string QRIS Anda di bawah ini dan tekan Enter:{Style.RESET_ALL}")
+        try:
+            raw_input = input("> ").strip() # .strip() membuang spasi/newline di awal/akhir
+        except KeyboardInterrupt:
+            print("\nOperasi dibatalkan.")
+            sys.exit()
+
+    if not raw_input:
+        print(f"{Fore.RED}Error: Input tidak boleh kosong.{Style.RESET_ALL}")
+        sys.exit()
+
+    print(f"\n{Fore.BLUE}Analyzing String:{Style.RESET_ALL} {raw_input[:30]}...")
     
-    # 1. Jalankan Parsing dengan toleransi error
-    parsed_tags = parse_qris_deep_debug(raw_qris)
+    # 1. Parse & CRC
+    is_valid, result = parse_root(raw_input)
     
-    # 2. Tampilkan hasil yang BERHASIL dibaca sejauh ini
-    show_results(parsed_tags)
-    
-    # 3. Cek CRC (hanya jika minimal ada data)
-    if len(raw_qris) > 4:
-        validate_crc_deep(raw_qris, parsed_tags)
+    if not is_valid:
+        print(f"\n{Fore.RED}❌ PARSING FAILED:{Style.RESET_ALL} {result}")
+    else:
+        tags = result
+        print(f"\n{Fore.GREEN}✅ FORMAT & CRC VALID{Style.RESET_ALL}")
+        
+        # 2. Tampilkan Struktur Data
+        print(f"\n{Style.BRIGHT}--- DATA STRUCTURE ---{Style.RESET_ALL}")
+        print_tree(tags)
+        
+        # 3. Validasi Bisnis (Mandatory/Conditional)
+        errors, warnings = check_compliance(tags)
+        
+        print(f"\n{Style.BRIGHT}--- COMPLIANCE REPORT ---{Style.RESET_ALL}")
+        if not errors and not warnings:
+            print(f"{Fore.GREEN}PERFECT! QRIS Sesuai Standar ASPI.{Style.RESET_ALL}")
+        else:
+            for err in errors:
+                print(f"❌ {Fore.RED}{err}{Style.RESET_ALL}")
+            for warn in warnings:
+                print(f"⚠️ {Fore.YELLOW}{warn}{Style.RESET_ALL}")
