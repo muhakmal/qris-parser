@@ -31,7 +31,7 @@ class LookupEngine:
             with open(nns_path, mode="r", encoding="utf-8", errors="ignore") as f:
                 reader = csv.reader(f, delimiter=";")
                 # Skip header
-                header = next(reader, None)
+                next(reader, None)
                 for row in reader:
                     if len(row) >= 3:
                         switching = row[0].strip()
@@ -52,7 +52,7 @@ class LookupEngine:
         if mcc_path.exists():
             with open(mcc_path, mode="r", encoding="utf-8", errors="ignore") as f:
                 reader = csv.reader(f, delimiter=";")
-                header = next(reader, None)
+                next(reader, None)
                 for row in reader:
                     if len(row) >= 2:
                         code = row[0].strip()

@@ -73,6 +73,7 @@ def main() -> None:
     parser.add_argument("--summary", action="store_true", help="Print structured merchant summary")
     parser.add_argument("--to-dynamic", metavar="AMOUNT", help="Convert static QRIS to dynamic with specified amount")
     parser.add_argument("--to-static", action="store_true", help="Convert dynamic QRIS to static QRIS")
+    parser.add_argument("--save-image", metavar="FILENAME", help="Render and save QRIS as an image file (e.g. qris.png)")
     parser.add_argument("--version", action="version", version="qris-parser 0.2.0")
 
     args = parser.parse_args()
@@ -94,7 +95,19 @@ def main() -> None:
         print(_colorize("Error: Payload cannot be empty.", Fore.RED if HAS_COLORAMA else ""), file=sys.stderr)
         sys.exit(1)
 
-    # 1. Transform commands if requested
+    # 1. Image export if requested
+    if args.save_image:
+        from qris_parser.image import generate_qr_image
+
+        try:
+            out_file = generate_qr_image(raw_input_str, args.save_image)
+            print(_colorize(f"✅ QR Code image saved: {out_file}", Fore.GREEN if HAS_COLORAMA else ""))
+            sys.exit(0)
+        except Exception as e:
+            print(_colorize(f"❌ Failed to generate QR image: {e}", Fore.RED if HAS_COLORAMA else ""), file=sys.stderr)
+            sys.exit(1)
+
+    # 2. Transform commands if requested
     if args.to_dynamic:
         res = to_dynamic(raw_input_str, args.to_dynamic)
         if res.success:

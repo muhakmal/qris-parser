@@ -1,0 +1,30 @@
+name: 💡 Feature Request
+description: Propose a new feature, improvement, or spec update for QRIS Parser.
+title: "feat: [Short summary of the proposed feature]"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear description of what the problem or limitation is.
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Feature
+      description: Describe how you envision this feature working.
+      placeholder: Describe the desired API or CLI behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context or ASPI/EMVCo References
+      description: Add any relevant specification sections, links, or screenshots.
+    validations:
+      required: false

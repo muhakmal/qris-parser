@@ -2,7 +2,7 @@
 
 import base64
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from qris_parser.models import BerTlv, CpmComplianceReport, CpmParseResult
 from qris_parser.privacy import mask_cardholder_name
