@@ -241,7 +241,7 @@ class QRIS:
             is_dynamic=self.is_dynamic,
             mcc=self.mcc,
             mcc_description=self.mcc_description,
-            currency=f"IDR (360)" if self.tags.get("53") == "360" else str(self.tags.get("53", "-")),
+            currency="IDR (360)" if self.tags.get("53") == "360" else str(self.tags.get("53", "-")),
             amount=self.amount,
             amount_formatted=self.amount_formatted,
             tip_or_fee=tip_or_fee,
@@ -272,6 +272,16 @@ class QRIS:
     def to_static(self) -> GeneratorResult:
         """Convert dynamic QRIS to static QRIS."""
         return to_static(self.raw_payload)
+
+    def save_image(self, output_path: str, box_size: int = 10, border: int = 4) -> str:
+        """Render and save this QRIS payload as an image (e.g. PNG).
+
+        Requires the optional 'qrcode[pil]' package. Install via:
+            pip install "qris-parser[image]"
+        """
+        from qris_parser.image import generate_qr_image
+
+        return generate_qr_image(self.raw_payload, output_path, box_size=box_size, border=border)
 
     def to_dict(self) -> Dict[str, Any]:
         """Export summary, tags, and validation status to dictionary."""

@@ -2,7 +2,7 @@
 
 import re
 from decimal import Decimal, InvalidOperation
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from qris_parser.crc import calculate_crc16
 from qris_parser.models import GeneratorResult

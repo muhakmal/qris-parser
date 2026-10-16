@@ -48,6 +48,14 @@ dev = [
     "pytest>=7.0.0",
     "ruff>=0.1.0",
 ]
+image = [
+    "qrcode[pil]>=7.0",
+]
+all = [
+    "qrcode[pil]>=7.0",
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+]
 
 [project.scripts]
 qris-parser = "qris_parser.cli:main"
@@ -69,3 +77,11 @@ include = ["qris_parser*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

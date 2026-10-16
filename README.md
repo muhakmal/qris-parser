@@ -1,5 +1,7 @@
 # 🇮🇩 QRIS Parser & Validator (Python)
 
+[![CI](https://github.com/muhakmal/qris-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/muhakmal/qris-parser/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/qris-parser.svg)](https://pypi.org/project/qris-parser/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Specification](https://img.shields.io/badge/Spec-ASPI%20QRIS%20v1.0%20%7C%20CPM%20v0.3-008080.svg)](https://aspi-indonesia.or.id/)
 [![Standard](https://img.shields.io/badge/Standard-EMVCo%20MPM%20%26%20CPM-FF6F00.svg)](https://www.emvco.com/)
@@ -115,6 +117,12 @@ if cpm.is_valid:
     print("Cardholder Name:", cpm.tags.get("61", {}).get("5F20"))
 ```
 
+#### 4. Exporting QR Code Image (PNG)
+```python
+# Requires optional dependency: pip install "qris-parser[image]"
+qris.save_image("qris_invoice.png")
+```
+
 ---
 
 ### 💻 CLI Usage
@@ -134,10 +142,13 @@ qris-parser "000201010211..." --json
 # 4. Generate dynamic QRIS with nominal
 qris-parser "000201010211..." --to-dynamic "75000"
 
-# 5. Show merchant summary and issuer lookup
+# 5. Render and save QRIS as a PNG image
+qris-parser "000201010211..." --save-image invoice.png
+
+# 6. Show merchant summary and issuer lookup
 qris-parser "000201010211..." --summary
 
-# 6. Validate ASPI compliance only (exit code 0 on pass, 1 on fail)
+# 7. Validate ASPI compliance only (exit code 0 on pass, 1 on fail)
 qris-parser "000201010211..." --validate
 ```
 

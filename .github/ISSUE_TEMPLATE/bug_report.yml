@@ -1,0 +1,62 @@
+name: 🐛 Bug Report
+description: Create a report to help us fix a bug or unexpected behavior in QRIS Parser.
+title: "fix: [Short summary of the bug]"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please check existing issues before submitting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the problem...
+    validations:
+      required: true
+
+  - type: input
+    id: payload
+    attributes:
+      label: QRIS Payload
+      description: The payload string that reproduced the issue (sanitize any real customer PAN/names).
+      placeholder: "000201010211..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this behavior?
+      value: |
+        1. Run `qris-parser "..."`
+        2. Or in Python: `QRIS.parse("...")`
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs Actual Behavior
+      description: What did you expect to happen and what actually happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Python Version
+      options:
+        - Python 3.8
+        - Python 3.9
+        - Python 3.10
+        - Python 3.11
+        - Python 3.12
+        - Python 3.13
+        - Other
+    validations:
+      required: true

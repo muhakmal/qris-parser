@@ -38,9 +38,9 @@ def run() -> int:
                     failed += 1
                     print(f"  ❌ {mod_name}::{name} ({type(ex).__name__}: {ex})")
 
-    print(f"\n==========================================")
+    print("\n==========================================")
     print(f"Total: {passed + failed} tests | Passed: {passed} | Failed: {failed}")
-    print(f"==========================================")
+    print("==========================================")
     return 1 if failed > 0 else 0
 
 
