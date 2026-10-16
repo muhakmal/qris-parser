@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/muhakmal/qris-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/muhakmal/qris-parser/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/qris-parser.svg)](https://pypi.org/project/qris-parser/)
+[![BaskomLabs Showcase](https://img.shields.io/badge/Showcase-baskom.fun%2Fopen--source-00d1b2.svg)](https://baskom.fun/open-source)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![Specification](https://img.shields.io/badge/Spec-ASPI%20QRIS%20v1.0%20%7C%20CPM%20v0.3-008080.svg)](https://aspi-indonesia.or.id/)
 [![Standard](https://img.shields.io/badge/Standard-EMVCo%20MPM%20%26%20CPM-FF6F00.svg)](https://www.emvco.com/)
@@ -235,4 +236,4 @@ Kontribusi sangat terbuka! Silakan baca panduan lengkap di [CONTRIBUTING.md](CON
 Project ini dilisensikan di bawah [MIT License](LICENSE). Bebas digunakan untuk keperluan komersial, open source, maupun edukasi.
 
 ---
-<p align="center">Made with ❤️ for the Indonesian Fintech Community by <a href="https://github.com/muhakmal">@muhakmal</a></p>
+<p align="center">Part of the <a href="https://baskom.fun/open-source">BaskomLabs Open Source Initiative</a> · Made with ❤️ by <a href="https://github.com/muhakmal">@muhakmal</a></p>
