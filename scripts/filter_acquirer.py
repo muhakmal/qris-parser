@@ -22,8 +22,8 @@ from pathlib import Path
 # Allow running as `python scripts/filter_acquirer.py` from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from qris_parser.generator import Segment, _get_segments  # noqa: E402
 from qris_parser.crc import calculate_crc16  # noqa: E402
+from qris_parser.generator import Segment, _get_segments  # noqa: E402
 
 MAI_TAGS = {f"{t:02d}" for t in range(26, 46)}  # tags 26-45 carry MAI
 
