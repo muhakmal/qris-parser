@@ -190,15 +190,20 @@ def main() -> None:
         print(f"Merchant Name : {sm.merchant_name}")
         print(f"City / Postal : {sm.city} ({sm.postal_code})")
         print(f"QRIS Type     : {sm.qris_type}")
-        print(f"Acquirer      : {sm.acquirer} ({sm.product_name})")
-        if sm.switchings:
-            print(f"Switching     : {', '.join(sm.switchings)}")
+        print(f"Acquirers     : {len(sm.acquirers)} in this QR")
+        for acc in sm.acquirers:
+            switching = f" via {', '.join(acc.switchings)}" if acc.switchings else ""
+            print(f"  [{acc.tag}] {acc.product_name} - {acc.acquirer} (NNS {acc.nns}, {acc.criteria or '-'}){switching}")
         print(f"MCC           : {sm.mcc} ({sm.mcc_description})")
         print(f"NMID          : {sm.nmid}")
         if sm.amount_formatted:
             print(f"Amount        : {sm.amount_formatted}")
         if sm.tip_or_fee:
             print(f"Tip / Fee     : {sm.tip_or_fee}")
+
+        print(_colorize("\n--- WHERE A PAYMENT LANDS ---", Style.BRIGHT if HAS_COLORAMA else ""))
+        for note in sm.payment_routing:
+            print(f"- {note}")
 
     # Compliance report
     report = qris.check_compliance()

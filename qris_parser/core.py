@@ -8,6 +8,7 @@ from qris_parser.cpm import check_cpm_compliance, is_cpm, parse_cpm
 from qris_parser.generator import to_dynamic, to_static
 from qris_parser.lookups import lookups
 from qris_parser.models import (
+    AcquirerAccount,
     ComplianceReport,
     CpmComplianceReport,
     CpmParseResult,
@@ -19,6 +20,42 @@ from qris_parser.mpm import parse_mpm
 from qris_parser.privacy import mask_sensitive_value
 from qris_parser.spec import ADDITIONAL_DATA_SPEC, MERCHANT_CRITERIA
 from qris_parser.validator import check_mpm_compliance
+
+
+def describe_payment_routing(accounts: List[AcquirerAccount], nmid_criteria: Optional[str] = None) -> List[str]:
+    """Explain where a payment to this QR settles, depending on the app the payer scans with."""
+    if not accounts:
+        return ["No Merchant Account Information (tags 26-45): only the NMID in tag 51 identifies the merchant."]
+
+    notes: List[str] = []
+    first = accounts[0]
+    if len(accounts) == 1:
+        notes.append(
+            f"Every payment, on-us or off-us, settles to the merchant's account at {first.acquirer} "
+            f"({first.product_name}, tag {first.tag})."
+        )
+    else:
+        for acc in accounts:
+            notes.append(
+                f"Paid with {acc.product_name}: on-us, settles to the merchant's {acc.acquirer} account "
+                f"(tag {acc.tag}, NNS {acc.nns})."
+            )
+        notes.append(
+            "Paid with any other app: off-us. The issuer picks one account and routes it through switching; "
+            f"most issuers take the first one, tag {first.tag} ({first.product_name}), "
+            "but the choice can differ per issuer."
+        )
+        notes.append(
+            f"Settlement is split across {len(accounts)} acquirers, so the merchant reconciles each account separately."
+        )
+
+    criteria_by_tag = {acc.tag: acc.criteria for acc in accounts if acc.criteria}
+    if nmid_criteria:
+        criteria_by_tag["51"] = nmid_criteria
+    if len(set(criteria_by_tag.values())) > 1:
+        detail = ", ".join(f"tag {t} = {c}" for t, c in sorted(criteria_by_tag.items()))
+        notes.append(f"Merchant criteria differ between tags ({detail}); MDR may differ depending on the route taken.")
+    return notes
 
 
 def format_idr(amount_str: Optional[str]) -> Optional[str]:
@@ -180,6 +217,34 @@ class QRIS:
         return "Unknown"
 
     @property
+    def acquirers(self) -> List[AcquirerAccount]:
+        """Every Merchant Account Information template (tags 26-45), in tag order."""
+        accounts: List[AcquirerAccount] = []
+        if not self.is_mpm:
+            return accounts
+        for k in range(26, 46):
+            mai = self.tags.get(str(k))
+            if not isinstance(mai, dict):
+                continue
+            pan = str(mai.get("01", "-"))
+            nns = pan[:8] if pan != "-" and len(pan) >= 8 else "-"
+            accounts.append(
+                AcquirerAccount(
+                    tag=str(k),
+                    global_id=str(mai.get("00", "-")),
+                    nns=nns,
+                    acquirer=lookups.get_acquirer(nns) if nns != "-" else "Unknown",
+                    product_name=lookups.get_product_name(nns) if nns != "-" else "Unknown",
+                    mpan=pan,
+                    mpan_masked=mask_sensitive_value(pan) if pan != "-" else "-",
+                    mid=str(mai.get("02", "-")),
+                    criteria=mai.get("03"),
+                    switchings=lookups.get_switchings(nns) if nns != "-" else [],
+                )
+            )
+        return accounts
+
+    @property
     def switchings(self) -> List[str]:
         pan = self.mpan
         if pan != "-" and len(pan) >= 8:
@@ -212,6 +277,8 @@ class QRIS:
             if isinstance(mai, dict) and "02" in mai:
                 mid = str(mai["02"])
                 break
+
+        accounts = self.acquirers
 
         tag62 = self.tags.get("62")
         terminal = "-"
@@ -255,6 +322,10 @@ class QRIS:
             product_name=self.product_name,
             switchings=self.switchings,
             additional_data=add_data,
+            acquirers=accounts,
+            payment_routing=describe_payment_routing(
+                accounts, tag51.get("03") if isinstance(tag51, dict) else None
+            ),
         )
 
     def check_compliance(self) -> Union[ComplianceReport, CpmComplianceReport]:

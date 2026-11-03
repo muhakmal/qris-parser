@@ -51,6 +51,22 @@ class ComplianceReport:
 
 
 @dataclass
+class AcquirerAccount:
+    """One Merchant Account Information template (tags 26-45) and the PJP behind it."""
+
+    tag: str
+    global_id: str = "-"
+    nns: str = "-"
+    acquirer: str = "Unknown"
+    product_name: str = "Unknown"
+    mpan: str = "-"
+    mpan_masked: str = "-"
+    mid: str = "-"
+    criteria: Optional[str] = None
+    switchings: List[str] = field(default_factory=list)
+
+
+@dataclass
 class MerchantSummary:
     """Consolidated, human-readable merchant and payment summary."""
 
@@ -75,6 +91,10 @@ class MerchantSummary:
     product_name: str = "Unknown"
     switchings: List[str] = field(default_factory=list)
     additional_data: List[Dict[str, str]] = field(default_factory=list)
+    # Every acquirer in the QR, in tag order (acquirer/mpan/mid above are the first one).
+    acquirers: List[AcquirerAccount] = field(default_factory=list)
+    # Plain-language notes on where a payment lands, depending on the payer's app.
+    payment_routing: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
